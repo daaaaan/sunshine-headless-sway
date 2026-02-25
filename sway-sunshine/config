@@ -1,0 +1,20 @@
+# Headless Sway session for Sunshine streaming
+# No physical display needed - uses WLR_BACKENDS=headless
+
+# Default headless output - 1080p fallback, Sunshine prep commands override this
+output HEADLESS-1 resolution 1920x1080@60Hz
+
+# Performance tuning
+output * allow_tearing yes
+output * max_render_time off
+
+# Dark background
+exec swaybg -c '#1a1a2e'
+
+# Input - accept virtual input from Sunshine
+input * {
+    accel_profile flat
+}
+
+# Keybinding to launch a terminal (useful for debugging)
+bindsym Mod4+Return exec foot

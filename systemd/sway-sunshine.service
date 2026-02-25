@@ -1,0 +1,20 @@
+[Unit]
+Description=Headless Sway session for Sunshine streaming
+After=graphical-session.target
+
+[Service]
+Type=simple
+Environment=WLR_BACKENDS=headless
+Environment=WLR_LIBINPUT_NO_DEVICES=1
+Environment=WLR_RENDERER=gles2
+Environment=XDG_SESSION_TYPE=wayland
+Environment=XDG_CURRENT_DESKTOP=sway
+Environment=SWAYSOCK=/run/user/1000/sway-sunshine.sock
+Environment=PULSE_SINK=sink-sunshine-stereo
+ExecStartPre=-/bin/rm -f /run/user/1000/sway-sunshine.sock
+ExecStart=/usr/bin/sway --config %h/.config/sway-sunshine/config
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

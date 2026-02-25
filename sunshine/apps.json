@@ -1,0 +1,31 @@
+{
+  "env": {
+    "PATH": "$(PATH):$(HOME)/.local/bin",
+    "SWAYSOCK": "/run/user/1000/sway-sunshine.sock"
+  },
+  "apps": [
+    {
+      "name": "Desktop",
+      "image-path": "desktop.png",
+      "prep-cmd": [
+        {
+          "do": "/home/YOUR_USER/.config/sway-sunshine/set-resolution.sh",
+          "undo": "/home/YOUR_USER/.config/sway-sunshine/reset-resolution.sh"
+        }
+      ]
+    },
+    {
+      "name": "Steam Big Picture",
+      "detached": [
+        "swaymsg exec 'steam steam://open/bigpicture'"
+      ],
+      "prep-cmd": [
+        {
+          "do": "/home/YOUR_USER/.config/sway-sunshine/set-resolution.sh",
+          "undo": "swaymsg exec 'steam steam://close/bigpicture'"
+        }
+      ],
+      "image-path": "steam.png"
+    }
+  ]
+}

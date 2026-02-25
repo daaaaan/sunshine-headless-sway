@@ -17,12 +17,25 @@
     {
       "name": "Steam Big Picture",
       "detached": [
-        "swaymsg exec 'steam steam://open/bigpicture'"
+        "/home/YOUR_USER/.config/sway-sunshine/start-steam-game.sh bigpicture"
       ],
       "prep-cmd": [
         {
           "do": "/home/YOUR_USER/.config/sway-sunshine/set-resolution.sh",
-          "undo": "swaymsg exec 'steam steam://close/bigpicture'"
+          "undo": "/home/YOUR_USER/.config/sway-sunshine/stop-steam-game.sh"
+        }
+      ],
+      "image-path": "steam.png"
+    },
+    {
+      "name": "Steam",
+      "detached": [
+        "/home/YOUR_USER/.config/sway-sunshine/start-steam-game.sh 0"
+      ],
+      "prep-cmd": [
+        {
+          "do": "/home/YOUR_USER/.config/sway-sunshine/set-resolution.sh",
+          "undo": "/home/YOUR_USER/.config/sway-sunshine/stop-steam-game.sh"
         }
       ],
       "image-path": "steam.png"

@@ -21,7 +21,7 @@ This setup runs a separate headless Wayland compositor (Sway) dedicated to game 
 - **OS**: Linux with systemd user services (tested on Ubuntu 25.10)
 - **GPU**: NVIDIA with proprietary drivers (for NVENC)
 - **Packages**: `sway`, `swaybg`, `pipewire`, `wireplumber`, `xdg-desktop-portal-wlr`
-- **Sunshine**: [LizardByte Sunshine](https://github.com/LizardByte/Sunshine/releases) (installed separately)
+- **Sunshine**: [LizardByte Sunshine](https://github.com/LizardByte/Sunshine/releases) v2026.226+ (deb package recommended)
 - **Client**: [Moonlight](https://moonlight-stream.org/) on any device
 
 ## Quick install
@@ -96,7 +96,8 @@ The Sway service uses `WLR_RENDERER=gles2`. The Vulkan renderer has DRM format m
 Game audio is routed exclusively to the Moonlight stream without touching your host audio:
 
 - `PULSE_SINK=sink-sunshine-stereo` is set in the Sway service environment, so apps launched in the headless session output to Sunshine's virtual sink
-- `sink = sink-sunshine-stereo` in `sunshine.conf` tells Sunshine to capture from that sink directly, without changing the system default
+- `audio_sink = sink-sunshine-stereo` in `sunshine.conf` tells Sunshine to capture from that sink directly, without changing the system default
+- Sunshine automatically creates the `sink-sunshine-stereo` virtual null-sink when a client connects
 - Your main desktop audio continues through your normal output device
 
 ### Dynamic resolution
@@ -136,7 +137,7 @@ Sway creates its IPC socket at the path specified by `SWAYSOCK` (`/run/user/<uid
 
 ### Audio bleeds to host
 
-- Verify `sink = sink-sunshine-stereo` is in `~/.config/sunshine/sunshine.conf`
+- Verify `audio_sink = sink-sunshine-stereo` is in `~/.config/sunshine/sunshine.conf`
 - Check `PULSE_SINK=sink-sunshine-stereo` is in `sway-sunshine.service`
 - Confirm your default sink: `wpctl status | grep "Default Configured"`
 

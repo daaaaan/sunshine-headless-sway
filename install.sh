@@ -79,9 +79,19 @@ mkdir -p "$SUNSHINE_CONFIG_DIR"
 if [ ! -f "$SUNSHINE_CONFIG_DIR/sunshine.conf" ]; then
     cp "$SCRIPT_DIR/sunshine/sunshine.conf" "$SUNSHINE_CONFIG_DIR/sunshine.conf"
     echo "Created sunshine.conf"
-elif ! grep -q "^sink" "$SUNSHINE_CONFIG_DIR/sunshine.conf"; then
-    echo "sink = sink-sunshine-stereo" >> "$SUNSHINE_CONFIG_DIR/sunshine.conf"
-    echo "Added audio sink to existing sunshine.conf"
+elif ! grep -q "^audio_sink" "$SUNSHINE_CONFIG_DIR/sunshine.conf"; then
+    # Migrate old 'sink' option if present
+    if grep -q "^sink " "$SUNSHINE_CONFIG_DIR/sunshine.conf"; then
+        sed -i 's/^sink = /audio_sink = /' "$SUNSHINE_CONFIG_DIR/sunshine.conf"
+        echo "Migrated 'sink' to 'audio_sink' in existing sunshine.conf"
+    else
+        echo "audio_sink = sink-sunshine-stereo" >> "$SUNSHINE_CONFIG_DIR/sunshine.conf"
+        echo "Added audio_sink to existing sunshine.conf"
+    fi
+    if ! grep -q "^capture" "$SUNSHINE_CONFIG_DIR/sunshine.conf"; then
+        echo "capture = wlr" >> "$SUNSHINE_CONFIG_DIR/sunshine.conf"
+        echo "Added capture = wlr to sunshine.conf"
+    fi
 else
     echo "sunshine.conf already configured, skipping"
 fi

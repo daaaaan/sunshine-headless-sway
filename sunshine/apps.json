@@ -9,6 +9,10 @@
       "image-path": "desktop.png",
       "prep-cmd": [
         {
+          "do": "/home/YOUR_USER/.config/sway-sunshine/restore-default-sink.sh",
+          "undo": ""
+        },
+        {
           "do": "/home/YOUR_USER/.config/sway-sunshine/set-resolution.sh",
           "undo": "/home/YOUR_USER/.config/sway-sunshine/reset-resolution.sh"
         }
@@ -20,6 +24,10 @@
         "/home/YOUR_USER/.config/sway-sunshine/start-steam-game.sh bigpicture"
       ],
       "prep-cmd": [
+        {
+          "do": "/home/YOUR_USER/.config/sway-sunshine/restore-default-sink.sh",
+          "undo": ""
+        },
         {
           "do": "/home/YOUR_USER/.config/sway-sunshine/set-resolution.sh",
           "undo": "/home/YOUR_USER/.config/sway-sunshine/stop-steam-game.sh"
@@ -33,6 +41,10 @@
         "/home/YOUR_USER/.config/sway-sunshine/start-steam-game.sh 0"
       ],
       "prep-cmd": [
+        {
+          "do": "/home/YOUR_USER/.config/sway-sunshine/restore-default-sink.sh",
+          "undo": ""
+        },
         {
           "do": "/home/YOUR_USER/.config/sway-sunshine/set-resolution.sh",
           "undo": "/home/YOUR_USER/.config/sway-sunshine/stop-steam-game.sh"

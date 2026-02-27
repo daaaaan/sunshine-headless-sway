@@ -71,8 +71,10 @@ sed "s|/run/user/1000/|/run/user/$USER_ID/|g" \
     "$SCRIPT_DIR/sway-sunshine/set-resolution.sh" > "$SWAY_CONFIG_DIR/set-resolution.sh"
 sed "s|/run/user/1000/|/run/user/$USER_ID/|g" \
     "$SCRIPT_DIR/sway-sunshine/reset-resolution.sh" > "$SWAY_CONFIG_DIR/reset-resolution.sh"
+cp "$SCRIPT_DIR/sway-sunshine/restore-default-sink.sh" "$SWAY_CONFIG_DIR/restore-default-sink.sh"
 chmod +x "$SWAY_CONFIG_DIR/set-resolution.sh"
 chmod +x "$SWAY_CONFIG_DIR/reset-resolution.sh"
+chmod +x "$SWAY_CONFIG_DIR/restore-default-sink.sh"
 
 # Sunshine config (only if not already configured)
 mkdir -p "$SUNSHINE_CONFIG_DIR"

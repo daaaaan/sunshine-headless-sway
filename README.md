@@ -96,8 +96,9 @@ The Sway service uses `WLR_RENDERER=gles2`. The Vulkan renderer has DRM format m
 Game audio is routed exclusively to the Moonlight stream without touching your host audio:
 
 - `PULSE_SINK=sink-sunshine-stereo` is set in the Sway service environment, so apps launched in the headless session output to Sunshine's virtual sink
-- `audio_sink = sink-sunshine-stereo` in `sunshine.conf` tells Sunshine to capture from that sink directly, without changing the system default
+- `audio_sink = sink-sunshine-stereo` in `sunshine.conf` tells Sunshine to capture from that sink
 - Sunshine automatically creates the `sink-sunshine-stereo` virtual null-sink when a client connects
+- `restore-default-sink.sh` runs as a prep command to prevent Sunshine from hijacking your host's default audio sink — it detects the change and restores it within seconds
 - Your main desktop audio continues through your normal output device
 
 ### Dynamic resolution
@@ -139,7 +140,8 @@ Sway creates its IPC socket at the path specified by `SWAYSOCK` (`/run/user/<uid
 
 - Verify `audio_sink = sink-sunshine-stereo` is in `~/.config/sunshine/sunshine.conf`
 - Check `PULSE_SINK=sink-sunshine-stereo` is in `sway-sunshine.service`
-- Confirm your default sink: `wpctl status | grep "Default Configured"`
+- Verify the `restore-default-sink.sh` prep command is in `apps.json` — without it, Sunshine sets `sink-sunshine-stereo` as the system-wide default, routing all host audio into the stream
+- Confirm your default sink after connecting: `wpctl status | grep '\*'`
 
 ### UPnP port mapping failures
 
@@ -203,7 +205,8 @@ Open Moonlight, find your host, and pair using the PIN at `https://YOUR_HOST:479
 ├── sway-sunshine/
 │   ├── config                  # Headless Sway compositor config
 │   ├── set-resolution.sh       # Dynamic resolution on connect
-│   └── reset-resolution.sh     # Reset resolution on disconnect
+│   ├── reset-resolution.sh     # Reset resolution on disconnect
+│   └── restore-default-sink.sh # Prevents Sunshine from hijacking host audio
 ├── sunshine/
 │   ├── sunshine.conf           # Sunshine server config
 │   └── apps.json               # Game/app entries for Moonlight

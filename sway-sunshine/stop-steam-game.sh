@@ -16,9 +16,6 @@ if pgrep -x steam > /dev/null 2>&1; then
     sleep 2
 fi
 
-# Clean up IPC before relaunching
+# Clean up IPC
 rm -f ~/.steam/steam.pid 2>/dev/null
 rm -f /tmp/steam_singleton_* 2>/dev/null
-
-# Relaunch Steam on the main desktop (wayland-0)
-WAYLAND_DISPLAY=wayland-0 nohup steam -silent > /dev/null 2>&1 &

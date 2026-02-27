@@ -124,6 +124,11 @@ mkdir -p "$PIPEWIRE_DIR"
 cp "$SCRIPT_DIR/pipewire/sunshine-null-sink.conf" "$PIPEWIRE_DIR/sunshine-null-sink.conf"
 echo "Installed PipeWire persistent audio sink"
 
+# udev rule: move Sunshine virtual inputs off seat0 so GNOME ignores them
+sudo cp "$SCRIPT_DIR/udev/85-sunshine-input-isolation.rules" /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+echo "Installed udev input isolation rule"
+
 echo "Installed systemd services"
 
 # Reload and enable

@@ -128,7 +128,12 @@ Sway creates its IPC socket at the path specified by `SWAYSOCK` (`/run/user/<uid
 
 ### Input isolation
 
-The headless Sway session uses `WLR_BACKENDS=headless,libinput` to pick up Sunshine's virtual input devices (keyboard, mouse, touch, gamepad) via uinput hotplug. The Sway config disables all physical host devices and only enables Sunshine's virtual passthrough devices (vendor `0xBEEF`, product `0xDEAD`), so your physical keyboard and mouse don't leak into the streaming session.
+Input is fully isolated between your desktop and the streaming session:
+
+- A **udev rule** (`85-sunshine-input-isolation.rules`) moves Sunshine's virtual input devices (vendor `0xBEEF`, product `0xDEAD`) off `seat0` to `seat-sunshine`, so GNOME/KDE never sees them
+- The headless Sway uses `WLR_BACKENDS=headless,libinput` to pick up Sunshine's virtual devices via uinput hotplug
+- The **Sway config** disables all physical host devices and only enables Sunshine's passthrough devices, so your physical keyboard and mouse don't leak into the streaming session
+- Gamepads are read directly by Steam via evdev, bypassing the compositor entirely
 
 ### No input / can't control games
 
@@ -212,6 +217,9 @@ Open Moonlight, find your host, and pair using the PIN at `https://YOUR_HOST:479
 ## File structure
 
 ```
+/etc/udev/rules.d/
+└── 85-sunshine-input-isolation.rules  # Hides Sunshine inputs from GNOME
+
 ~/.config/
 ├── pipewire/pipewire.conf.d/
 │   └── sunshine-null-sink.conf # Persistent audio sink (survives disconnect)

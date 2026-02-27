@@ -1,0 +1,3 @@
+# Move Sunshine virtual input devices off seat0 so GNOME ignores them.
+# The headless Sway session picks them up via direct libinput access.
+ACTION=="add|change", SUBSYSTEM=="input", ATTRS{id/vendor}=="beef", ATTRS{id/product}=="dead", ENV{ID_SEAT}="seat-sunshine", TAG-="seat"

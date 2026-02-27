@@ -95,10 +95,11 @@ The Sway service uses `WLR_RENDERER=gles2`. The Vulkan renderer has DRM format m
 
 Game audio is routed exclusively to the Moonlight stream without touching your host audio:
 
-- `PULSE_SINK=sink-sunshine-stereo` is set in the Sway service environment, so apps launched in the headless session output to Sunshine's virtual sink
+- A persistent PipeWire null sink (`sink-sunshine-stereo`) is created via config drop-in — it always exists, even when Moonlight is disconnected or backgrounded
+- `PULSE_SINK=sink-sunshine-stereo` is set in the Sway service environment, so apps launched in the headless session output to this sink
 - `audio_sink = sink-sunshine-stereo` in `sunshine.conf` tells Sunshine to capture from that sink
-- Sunshine automatically creates the `sink-sunshine-stereo` virtual null-sink when a client connects
 - `restore-default-sink.sh` runs as a prep command to prevent Sunshine from hijacking your host's default audio sink — it detects the change and restores it within seconds
+- When Moonlight is backgrounded, game audio stays in the persistent null sink (silent) instead of reverting to your host speakers
 - Your main desktop audio continues through your normal output device
 
 ### Dynamic resolution
@@ -125,10 +126,15 @@ Sway creates its IPC socket at the path specified by `SWAYSOCK` (`/run/user/<uid
 - Ensure `WLR_RENDERER=gles2` is set in `sway-sunshine.service` (not `vulkan`)
 - Verify Sunshine is connecting to the correct Wayland display
 
+### Input isolation
+
+The headless Sway session uses `WLR_BACKENDS=headless,libinput` to pick up Sunshine's virtual input devices (keyboard, mouse, touch, gamepad) via uinput hotplug. The Sway config disables all physical host devices and only enables Sunshine's virtual passthrough devices (vendor `0xBEEF`, product `0xDEAD`), so your physical keyboard and mouse don't leak into the streaming session.
+
 ### No input / can't control games
 
 - The `xdg-desktop-portal-wlr` package must be installed
 - Check that `/dev/uinput` is accessible to your user (Sunshine's udev rules should handle this)
+- Verify the libinput backend is active: `SWAYSOCK=/run/user/$(id -u)/sway-sunshine.sock swaymsg -t get_inputs` should show Sunshine passthrough devices when a Moonlight client is connected
 
 ### Games don't launch
 
@@ -171,6 +177,11 @@ chmod +x ~/.config/sway-sunshine/*.sh
 cp sunshine/sunshine.conf ~/.config/sunshine/sunshine.conf
 cp sunshine/apps.json ~/.config/sunshine/apps.json
 
+# PipeWire persistent audio sink
+mkdir -p ~/.config/pipewire/pipewire.conf.d
+cp pipewire/sunshine-null-sink.conf ~/.config/pipewire/pipewire.conf.d/
+systemctl --user restart pipewire.service
+
 # Systemd services
 mkdir -p ~/.config/systemd/user
 cp systemd/sway-sunshine.service ~/.config/systemd/user/
@@ -202,8 +213,10 @@ Open Moonlight, find your host, and pair using the PIN at `https://YOUR_HOST:479
 
 ```
 ~/.config/
+├── pipewire/pipewire.conf.d/
+│   └── sunshine-null-sink.conf # Persistent audio sink (survives disconnect)
 ├── sway-sunshine/
-│   ├── config                  # Headless Sway compositor config
+│   ├── config                  # Headless Sway compositor config (input isolation)
 │   ├── set-resolution.sh       # Dynamic resolution on connect
 │   ├── reset-resolution.sh     # Reset resolution on disconnect
 │   └── restore-default-sink.sh # Prevents Sunshine from hijacking host audio

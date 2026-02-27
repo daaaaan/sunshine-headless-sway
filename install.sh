@@ -118,6 +118,12 @@ sed -e "s|WAYLAND_DISPLAY=wayland-1|WAYLAND_DISPLAY=$HEADLESS_DISPLAY|g" \
     -e "s|ExecStart=.*|ExecStart=$SUNSHINE_PATH|g" \
     "$SCRIPT_DIR/systemd/sunshine-headless.service" > "$SYSTEMD_DIR/sunshine-headless.service"
 
+# PipeWire persistent null sink (survives Moonlight disconnect)
+PIPEWIRE_DIR="$HOME/.config/pipewire/pipewire.conf.d"
+mkdir -p "$PIPEWIRE_DIR"
+cp "$SCRIPT_DIR/pipewire/sunshine-null-sink.conf" "$PIPEWIRE_DIR/sunshine-null-sink.conf"
+echo "Installed PipeWire persistent audio sink"
+
 echo "Installed systemd services"
 
 # Reload and enable

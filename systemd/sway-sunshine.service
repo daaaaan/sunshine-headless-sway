@@ -4,7 +4,7 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-Environment=WLR_BACKENDS=headless
+Environment=WLR_BACKENDS=headless,libinput
 Environment=WLR_LIBINPUT_NO_DEVICES=1
 Environment=WLR_RENDERER=gles2
 Environment=XDG_SESSION_TYPE=wayland

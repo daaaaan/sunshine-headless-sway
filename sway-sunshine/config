@@ -11,10 +11,19 @@ output * max_render_time off
 # Dark background
 exec swaybg -c '#1a1a2e'
 
-# Input - accept virtual input from Sunshine
-input * {
-    accel_profile flat
-}
+# Input isolation: disable all physical devices, enable only Sunshine virtual inputs
+# Sunshine passthrough devices use vendor 48879 (0xBEEF), product 57005 (0xDEAD)
+input * events disabled
+input "48879:57005:Keyboard_passthrough" events enabled
+input "48879:57005:Mouse_passthrough" events enabled
+input "48879:57005:Mouse_passthrough_(absolute)" events enabled
+input "48879:57005:Touch_passthrough" events enabled
+input "48879:57005:Pen_passthrough" events enabled
+input "1356:3302:Sunshine_PS5_(virtual)_pad_Touchpad" events enabled
+
+# Flat acceleration for mouse passthrough
+input "48879:57005:Mouse_passthrough" accel_profile flat
+input "48879:57005:Mouse_passthrough_(absolute)" accel_profile flat
 
 # Keybinding to launch a terminal (useful for debugging)
 bindsym Mod4+Return exec foot

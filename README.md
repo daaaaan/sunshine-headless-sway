@@ -89,7 +89,7 @@ Restart Sunshine after editing: `systemctl --user restart sunshine-headless.serv
 
 ### NVIDIA + headless Sway renderer
 
-The Sway service uses `WLR_RENDERER=gles2`. The Vulkan renderer has DRM format modifier incompatibilities with NVIDIA's headless backend that cause frame capture failures.
+The Sway service uses `WLR_RENDERER=gles2` by default. Older wlroots versions have DRM format modifier incompatibilities with NVIDIA's headless backend when using the Vulkan renderer. This may be resolved in wlroots 0.18+, but gles2 remains the safe default.
 
 ### Audio isolation
 
@@ -139,7 +139,7 @@ Input is fully isolated between your desktop and the streaming session:
 
 - The `xdg-desktop-portal-wlr` package must be installed
 - Check that `/dev/uinput` is accessible to your user (Sunshine's udev rules should handle this)
-- Verify the libinput backend is active: `SWAYSOCK=/run/user/$(id -u)/sway-sunshine.sock swaymsg -t get_inputs` should show Sunshine passthrough devices when a Moonlight client is connected
+- Verify the libinput backend is active: `SWAYSOCK=/run/user/$(id -u)/sway-sunshine.sock swaymsg -t get_inputs` should show Sunshine passthrough devices with `events: enabled`
 
 ### Games don't launch
 

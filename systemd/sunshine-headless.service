@@ -10,7 +10,7 @@ Environment=SWAYSOCK=/run/user/1000/sway-sunshine.sock
 Environment=XDG_SESSION_TYPE=wayland
 Environment=XDG_CURRENT_DESKTOP=sway
 ExecStartPre=/bin/sleep 2
-ExecStart=/usr/bin/sunshine
+ExecStart=/usr/bin/sg input -c /usr/bin/sunshine
 Restart=on-failure
 RestartSec=5
 

@@ -130,10 +130,31 @@ Sway creates its IPC socket at the path specified by `SWAYSOCK` (`/run/user/<uid
 
 Input is fully isolated between your desktop and the streaming session:
 
-- A **udev rule** (`85-sunshine-input-isolation.rules`) sets `mutter-device-ignore=1` on Sunshine's virtual input devices (vendor `0xBEEF`, product `0xDEAD`), so GNOME ignores them while they remain on `seat0` for Sway's libinput to enumerate
+- A **udev rule** (`85-sunshine-input-isolation.rules`) sets `mutter-device-ignore=1` on Sunshine's virtual input devices (vendor `0xBEEF`, product `0xDEAD`), so GNOME ignores them while they remain on `seat0` for Sway's libinput to enumerate (see [KDE users](#kde-kwin-users) for an alternative approach)
 - The headless Sway uses `WLR_BACKENDS=headless,libinput` with `LIBSEAT_BACKEND=noop` and runs under the `input` group via `sg` to access input devices without a logind seat
 - The **Sway config** disables all physical host devices and only enables Sunshine's passthrough devices, so your physical keyboard and mouse don't leak into the streaming session
 - Gamepads are read directly by Steam via evdev, bypassing the compositor entirely
+
+#### KDE (KWin) users
+
+KWin has no equivalent to `mutter-device-ignore`, so input isolation requires a different udev approach. Replace the contents of `85-sunshine-input-isolation.rules` with:
+
+```udev
+# Strip input capability from Sunshine virtual devices so KWin never sees them.
+# Devices remain accessible to headless Sway via libinput (which reads evdev directly).
+ACTION=="add|change", SUBSYSTEM=="input", ATTRS{id/vendor}=="beef", ATTRS{id/product}=="dead", ENV{ID_INPUT}="", ENV{ID_INPUT_KEYBOARD}="", ENV{ID_INPUT_MOUSE}="", ENV{ID_INPUT_TOUCHPAD}=""
+```
+
+This removes the `ID_INPUT*` tags that KWin (and libinput at the compositor level) uses to discover input devices. The headless Sway still picks them up because it accesses `/dev/input/event*` directly via the `input` group.
+
+After installing, reload udev rules:
+
+```bash
+sudo udevadm control --reload-rules
+sudo udevadm trigger --subsystem-match=input
+```
+
+> **Note**: This approach also works for GNOME, but is more aggressive — it hides the devices from *all* compositors and desktop tools (e.g., Settings panels). The `mutter-device-ignore` method is preferred for GNOME since it's more targeted.
 
 ### No input / can't control games
 

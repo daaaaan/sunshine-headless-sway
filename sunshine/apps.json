@@ -9,48 +9,30 @@
       "image-path": "desktop.png",
       "prep-cmd": [
         {
-          "do": "/home/YOUR_USER/.config/sway-sunshine/restore-default-sink.sh",
+          "do": "/home/salim/.config/sway-sunshine/restore-default-sink.sh",
           "undo": ""
         },
         {
-          "do": "/home/YOUR_USER/.config/sway-sunshine/set-resolution.sh",
-          "undo": "/home/YOUR_USER/.config/sway-sunshine/reset-resolution.sh"
+          "do": "/home/salim/.config/sway-sunshine/set-resolution.sh",
+          "undo": "/home/salim/.config/sway-sunshine/reset-resolution.sh"
         }
       ]
     },
     {
       "name": "Steam Big Picture",
-      "detached": [
-        "/home/YOUR_USER/.config/sway-sunshine/start-steam-game.sh bigpicture"
-      ],
+      "image-path": "steam.png",
       "prep-cmd": [
         {
-          "do": "/home/YOUR_USER/.config/sway-sunshine/restore-default-sink.sh",
+          "do": "/home/salim/.config/sway-sunshine/restore-default-sink.sh",
           "undo": ""
         },
         {
-          "do": "/home/YOUR_USER/.config/sway-sunshine/set-resolution.sh",
-          "undo": "/home/YOUR_USER/.config/sway-sunshine/stop-steam-game.sh"
+          "do": "/home/salim/.config/sway-sunshine/set-resolution.sh",
+          "undo": "/home/salim/.config/sway-sunshine/reset-resolution.sh"
         }
       ],
-      "image-path": "steam.png"
-    },
-    {
-      "name": "Steam",
-      "detached": [
-        "/home/YOUR_USER/.config/sway-sunshine/start-steam-game.sh 0"
-      ],
-      "prep-cmd": [
-        {
-          "do": "/home/YOUR_USER/.config/sway-sunshine/restore-default-sink.sh",
-          "undo": ""
-        },
-        {
-          "do": "/home/YOUR_USER/.config/sway-sunshine/set-resolution.sh",
-          "undo": "/home/YOUR_USER/.config/sway-sunshine/stop-steam-game.sh"
-        }
-      ],
-      "image-path": "steam.png"
+      "cmd": "swaymsg exec 'steam steam://open/bigpicture'",
+      "auto-detach": true
     }
   ]
 }

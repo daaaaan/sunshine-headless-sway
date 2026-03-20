@@ -1,4 +1,0 @@
-# Strip input capability from Sunshine virtual devices so KWin never sees them.
-# Devices remain accessible to headless Sway via libinput (which reads evdev directly).
-# This works by removing the ID_INPUT tags that KWin uses to discover input devices.
-ACTION=="add|change", SUBSYSTEM=="input", ATTRS{id/vendor}=="beef", ATTRS{id/product}=="dead", ENV{ID_INPUT}="", ENV{ID_INPUT_KEYBOARD}="", ENV{ID_INPUT_MOUSE}="", ENV{ID_INPUT_TOUCHPAD}=""

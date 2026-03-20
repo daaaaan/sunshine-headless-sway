@@ -1,4 +1,0 @@
-# Tell Mutter/GNOME to ignore Sunshine virtual input devices.
-# Devices stay on seat0 so headless Sway's libinput can enumerate them.
-# This is GNOME-specific — Mutter checks this property before claiming a device.
-ACTION=="add|change", SUBSYSTEM=="input", ATTRS{id/vendor}=="beef", ATTRS{id/product}=="dead", ENV{mutter-device-ignore}="1"

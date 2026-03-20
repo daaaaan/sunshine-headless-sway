@@ -1,8 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Headless Sway + Sunshine Game Streaming Setup
-# https://github.com/daaaaan/sunshine-headless-sway
+# Headless Sway + Sunshine Game Streaming Setup (Arch/KDE)
 
 SWAY_CONFIG_DIR="$HOME/.config/sway-sunshine"
 SUNSHINE_CONFIG_DIR="$HOME/.config/sunshine"
@@ -12,222 +11,98 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "=== Headless Sway + Sunshine Installer ==="
 echo ""
 
-# Detect package manager
-install_pkg() {
-    if command -v pacman &>/dev/null; then
-        sudo pacman -S --needed --noconfirm "$@"
-    elif command -v apt &>/dev/null; then
-        sudo apt install -y "$@"
+# Ensure user is in the 'input' group (required for virtual input devices)
+if ! id -nG "$USER" | grep -qw input; then
+    echo "Your user is not in the 'input' group (required for Sunshine virtual input)."
+    read -rp "Add $USER to the input group now? [Y/n] " ADD_INPUT
+    if [[ "${ADD_INPUT:-Y}" =~ ^[Yy]?$ ]]; then
+        sudo usermod -aG input "$USER"
+        echo "Added $USER to 'input' group. You must log out and back in for this to take effect."
+        INPUT_GROUP_CHANGED=true
     else
-        echo "Error: No supported package manager found (pacman or apt)"
-        exit 1
+        echo "Warning: Services may not work without 'input' group membership."
+        INPUT_GROUP_CHANGED=false
     fi
-}
-
-is_pkg_installed() {
-    if command -v pacman &>/dev/null; then
-        pacman -Qi "$1" &>/dev/null
-    elif command -v dpkg &>/dev/null; then
-        dpkg -s "$1" &>/dev/null 2>&1
-    else
-        return 1
-    fi
-}
-
-# Install dependencies
-for cmd in sway swaybg; do
-    if ! command -v "$cmd" &>/dev/null; then
-        echo "Installing sway and swaybg..."
-        install_pkg sway swaybg
-        break
-    fi
-done
-
-if ! is_pkg_installed xdg-desktop-portal-wlr; then
-    echo "Installing xdg-desktop-portal-wlr..."
-    install_pkg xdg-desktop-portal-wlr
-fi
-
-# Detect desktop environment
-detect_de() {
-    local de="${XDG_CURRENT_DESKTOP:-}"
-    de="${de,,}"  # lowercase
-
-    if [[ "$de" == *"gnome"* ]] || [[ "$de" == *"unity"* ]] || [[ "$de" == *"budgie"* ]]; then
-        echo "gnome"
-    elif [[ "$de" == *"kde"* ]] || [[ "$de" == *"plasma"* ]]; then
-        echo "kde"
-    elif command -v mutter &>/dev/null; then
-        echo "gnome"
-    elif command -v kwin_wayland &>/dev/null || command -v kwin_x11 &>/dev/null; then
-        echo "kde"
-    else
-        echo "unknown"
-    fi
-}
-
-DETECTED_DE=$(detect_de)
-
-echo ""
-if [ "$DETECTED_DE" = "gnome" ]; then
-    echo "Detected desktop environment: GNOME"
-    echo "  → Will use mutter-device-ignore for input isolation"
-elif [ "$DETECTED_DE" = "kde" ]; then
-    echo "Detected desktop environment: KDE Plasma"
-    echo "  → Will strip ID_INPUT tags for input isolation"
 else
-    echo "Could not auto-detect desktop environment."
-    echo ""
-    echo "Input isolation method depends on your desktop:"
-    echo "  1) GNOME  — uses mutter-device-ignore (targeted, GNOME-only)"
-    echo "  2) KDE    — strips ID_INPUT tags (works with KWin and other compositors)"
-    echo ""
-    read -rp "Select your desktop [1/2]: " DE_CHOICE
-    case "$DE_CHOICE" in
-        1) DETECTED_DE="gnome" ;;
-        2) DETECTED_DE="kde" ;;
-        *)
-            echo "Invalid choice. Defaulting to KDE method (works with any compositor)."
-            DETECTED_DE="kde"
-            ;;
-    esac
+    echo "User is in 'input' group"
+    INPUT_GROUP_CHANGED=false
 fi
+
+# Install dependencies (--needed skips already-installed packages)
+echo "Installing dependencies..."
+sudo pacman -S --needed --noconfirm sway swaybg xdg-desktop-portal-wlr
 
 # Check for Sunshine
-SUNSHINE_PATH=""
-if command -v sunshine &>/dev/null; then
-    SUNSHINE_PATH="$(command -v sunshine)"
-elif [ -f "$HOME/Apps/sunshine.AppImage" ]; then
-    SUNSHINE_PATH="$HOME/Apps/sunshine.AppImage"
-else
-    echo ""
-    echo "Sunshine not found. Please install it from:"
-    echo "  https://github.com/LizardByte/Sunshine/releases"
-    echo ""
-    read -rp "Enter the path to your Sunshine binary/AppImage: " SUNSHINE_PATH
-    if [ ! -f "$SUNSHINE_PATH" ]; then
-        echo "Error: $SUNSHINE_PATH not found"
-        exit 1
-    fi
+if ! command -v sunshine &>/dev/null; then
+    echo "Error: Sunshine not found. Install it with: paru -S sunshine"
+    exit 1
 fi
-
-echo "Using Sunshine at: $SUNSHINE_PATH"
-
-# Detect Wayland display for the headless session
-MAIN_WAYLAND=$(ls /run/user/$(id -u)/wayland-* 2>/dev/null | grep -v lock | sort | tail -1 | xargs basename)
-if [ "$MAIN_WAYLAND" = "wayland-0" ]; then
-    HEADLESS_DISPLAY="wayland-1"
-else
-    HEADLESS_DISPLAY="wayland-$((${MAIN_WAYLAND##wayland-} + 1))"
-fi
-echo "Main display: $MAIN_WAYLAND, headless will be: $HEADLESS_DISPLAY"
-
-# Detect UID for socket paths
-USER_ID=$(id -u)
-SOCKET_PATH="/run/user/$USER_ID/sway-sunshine.sock"
+echo "Found Sunshine at: $(command -v sunshine)"
 
 echo ""
 echo "Installing config files..."
 
-# Sway config
+# Sway config and scripts
 mkdir -p "$SWAY_CONFIG_DIR"
 cp "$SCRIPT_DIR/sway-sunshine/config" "$SWAY_CONFIG_DIR/config"
-
-# Resolution scripts (template the user ID into them)
-sed "s|/run/user/1000/|/run/user/$USER_ID/|g" \
-    "$SCRIPT_DIR/sway-sunshine/set-resolution.sh" > "$SWAY_CONFIG_DIR/set-resolution.sh"
-sed "s|/run/user/1000/|/run/user/$USER_ID/|g" \
-    "$SCRIPT_DIR/sway-sunshine/reset-resolution.sh" > "$SWAY_CONFIG_DIR/reset-resolution.sh"
+cp "$SCRIPT_DIR/sway-sunshine/set-resolution.sh" "$SWAY_CONFIG_DIR/set-resolution.sh"
+cp "$SCRIPT_DIR/sway-sunshine/reset-resolution.sh" "$SWAY_CONFIG_DIR/reset-resolution.sh"
 cp "$SCRIPT_DIR/sway-sunshine/restore-default-sink.sh" "$SWAY_CONFIG_DIR/restore-default-sink.sh"
-chmod +x "$SWAY_CONFIG_DIR/set-resolution.sh"
-chmod +x "$SWAY_CONFIG_DIR/reset-resolution.sh"
-chmod +x "$SWAY_CONFIG_DIR/restore-default-sink.sh"
+chmod +x "$SWAY_CONFIG_DIR"/*.sh
 
-# Sunshine config (only if not already configured)
+# Sunshine config
 mkdir -p "$SUNSHINE_CONFIG_DIR"
-if [ ! -f "$SUNSHINE_CONFIG_DIR/sunshine.conf" ]; then
-    cp "$SCRIPT_DIR/sunshine/sunshine.conf" "$SUNSHINE_CONFIG_DIR/sunshine.conf"
-    echo "Created sunshine.conf"
-elif ! grep -q "^audio_sink" "$SUNSHINE_CONFIG_DIR/sunshine.conf"; then
-    # Migrate old 'sink' option if present
-    if grep -q "^sink " "$SUNSHINE_CONFIG_DIR/sunshine.conf"; then
-        sed -i 's/^sink = /audio_sink = /' "$SUNSHINE_CONFIG_DIR/sunshine.conf"
-        echo "Migrated 'sink' to 'audio_sink' in existing sunshine.conf"
-    else
-        echo "audio_sink = sink-sunshine-stereo" >> "$SUNSHINE_CONFIG_DIR/sunshine.conf"
-        echo "Added audio_sink to existing sunshine.conf"
-    fi
-    if ! grep -q "^capture" "$SUNSHINE_CONFIG_DIR/sunshine.conf"; then
-        echo "capture = wlr" >> "$SUNSHINE_CONFIG_DIR/sunshine.conf"
-        echo "Added capture = wlr to sunshine.conf"
-    fi
-else
-    echo "sunshine.conf already configured, skipping"
-fi
-
-# Apps config (only if not already present)
-if [ ! -f "$SUNSHINE_CONFIG_DIR/apps.json" ]; then
-    sed "s|/home/YOUR_USER/|$HOME/|g" \
-        "$SCRIPT_DIR/sunshine/apps.json" > "$SUNSHINE_CONFIG_DIR/apps.json"
-    echo "Created apps.json"
-else
-    echo "apps.json already exists, skipping (see sunshine/apps.json for reference)"
-fi
+cp "$SCRIPT_DIR/sunshine/sunshine.conf" "$SUNSHINE_CONFIG_DIR/sunshine.conf"
+cp "$SCRIPT_DIR/sunshine/apps.json" "$SUNSHINE_CONFIG_DIR/apps.json"
+echo "Installed Sunshine config"
 
 # Systemd services
 mkdir -p "$SYSTEMD_DIR"
-
-sed -e "s|/run/user/1000/|/run/user/$USER_ID/|g" \
-    "$SCRIPT_DIR/systemd/sway-sunshine.service" > "$SYSTEMD_DIR/sway-sunshine.service"
-
-sed -e "s|WAYLAND_DISPLAY=wayland-1|WAYLAND_DISPLAY=$HEADLESS_DISPLAY|g" \
-    -e "s|/run/user/1000/|/run/user/$USER_ID/|g" \
-    -e "s|ExecStart=.*|ExecStart=$SUNSHINE_PATH|g" \
-    "$SCRIPT_DIR/systemd/sunshine-headless.service" > "$SYSTEMD_DIR/sunshine-headless.service"
+cp "$SCRIPT_DIR/systemd/sway-sunshine.service" "$SYSTEMD_DIR/sway-sunshine.service"
+cp "$SCRIPT_DIR/systemd/sunshine-headless.service" "$SYSTEMD_DIR/sunshine-headless.service"
+echo "Installed systemd services"
 
 # PipeWire persistent null sink (survives Moonlight disconnect)
 PIPEWIRE_DIR="$HOME/.config/pipewire/pipewire.conf.d"
 mkdir -p "$PIPEWIRE_DIR"
 cp "$SCRIPT_DIR/pipewire/sunshine-null-sink.conf" "$PIPEWIRE_DIR/sunshine-null-sink.conf"
-echo "Installed PipeWire persistent audio sink"
+systemctl --user restart pipewire.service
+echo "Installed PipeWire audio sink"
 
-# udev rule: install DE-appropriate input isolation rule
-UDEV_RULE="85-sunshine-input-isolation.rules"
-if [ "$DETECTED_DE" = "gnome" ]; then
-    sudo cp "$SCRIPT_DIR/udev/85-sunshine-input-isolation-gnome.rules" "/etc/udev/rules.d/$UDEV_RULE"
-    echo "Installed GNOME input isolation rule (mutter-device-ignore)"
-else
-    sudo cp "$SCRIPT_DIR/udev/85-sunshine-input-isolation-kde.rules" "/etc/udev/rules.d/$UDEV_RULE"
-    echo "Installed KDE input isolation rule (ID_INPUT stripping)"
+# Remove stale udev input isolation rule if present (it breaks headless Sway input)
+if [ -f "/etc/udev/rules.d/85-sunshine-input-isolation.rules" ]; then
+    sudo rm -f "/etc/udev/rules.d/85-sunshine-input-isolation.rules"
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger --subsystem-match=input
+    echo "Removed stale input isolation udev rule"
 fi
-sudo udevadm control --reload-rules
-
-echo "Installed systemd services"
 
 # Reload and enable
 systemctl --user daemon-reload
 systemctl --user enable sway-sunshine.service
 systemctl --user enable sunshine-headless.service
+systemctl --user mask sunshine.service 2>/dev/null || true
+systemctl --user mask app-dev.lizardbyte.app.Sunshine.service 2>/dev/null || true
 
 echo ""
 echo "=== Installation complete ==="
 echo ""
-echo "Desktop environment: $([ "$DETECTED_DE" = "gnome" ] && echo "GNOME" || echo "KDE/Other")"
-echo ""
-echo "To start streaming now:"
-echo "  systemctl --user start sway-sunshine.service"
-echo ""
 echo "To check status:"
 echo "  systemctl --user status sway-sunshine sunshine-headless"
-echo ""
-echo "To add Steam games to Moonlight, edit:"
-echo "  $SUNSHINE_CONFIG_DIR/apps.json"
 echo ""
 echo "Pair with Moonlight at: https://$(hostname):47990"
 echo ""
 
-read -rp "Start the services now? [Y/n] " START
-if [[ "${START:-Y}" =~ ^[Yy]?$ ]]; then
-    systemctl --user start sway-sunshine.service
-    echo "Services started. Open Moonlight to connect."
+if [ "$INPUT_GROUP_CHANGED" = true ]; then
+    echo "NOTE: You must log out and back in before starting services"
+    echo "      (the 'input' group change requires a new login session)"
+    echo ""
+    echo "After re-login, run:"
+    echo "  systemctl --user start sway-sunshine.service"
+else
+    read -rp "Start the services now? [Y/n] " START
+    if [[ "${START:-Y}" =~ ^[Yy]?$ ]]; then
+        systemctl --user start sway-sunshine.service
+        echo "Services started. Open Moonlight to connect."
+    fi
 fi

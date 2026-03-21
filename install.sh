@@ -30,7 +30,8 @@ fi
 
 # Install dependencies (--needed skips already-installed packages)
 echo "Installing dependencies..."
-sudo pacman -S --needed --noconfirm sway swaybg xdg-desktop-portal-wlr
+sudo pacman -S --needed --noconfirm sway swaybg xdg-desktop-portal-wlr \
+    fuzzel waybar mako xdg-desktop-portal-gtk
 
 # Check for Sunshine
 if ! command -v sunshine &>/dev/null; then
@@ -50,6 +51,18 @@ cp "$SCRIPT_DIR/sway-sunshine/reset-resolution.sh" "$SWAY_CONFIG_DIR/reset-resol
 cp "$SCRIPT_DIR/sway-sunshine/restore-default-sink.sh" "$SWAY_CONFIG_DIR/restore-default-sink.sh"
 chmod +x "$SWAY_CONFIG_DIR"/*.sh
 
+# Waybar config
+mkdir -p "$SWAY_CONFIG_DIR/waybar"
+cp "$SCRIPT_DIR/sway-sunshine/waybar/config.jsonc" "$SWAY_CONFIG_DIR/waybar/config.jsonc"
+cp "$SCRIPT_DIR/sway-sunshine/waybar/style.css" "$SWAY_CONFIG_DIR/waybar/style.css"
+echo "Installed waybar config"
+
+# XDG portal config (route screencopy to wlr, file pickers to gtk)
+XDG_PORTAL_DIR="$HOME/.config/xdg-desktop-portal"
+mkdir -p "$XDG_PORTAL_DIR"
+cp "$SCRIPT_DIR/sway-sunshine/xdg-portal.conf" "$XDG_PORTAL_DIR/sway-portals.conf"
+echo "Installed XDG portal config"
+
 # Sunshine config
 mkdir -p "$SUNSHINE_CONFIG_DIR"
 cp "$SCRIPT_DIR/sunshine/sunshine.conf" "$SUNSHINE_CONFIG_DIR/sunshine.conf"
@@ -65,9 +78,13 @@ echo "Installed systemd services"
 # PipeWire persistent null sink (survives Moonlight disconnect)
 PIPEWIRE_DIR="$HOME/.config/pipewire/pipewire.conf.d"
 mkdir -p "$PIPEWIRE_DIR"
-cp "$SCRIPT_DIR/pipewire/sunshine-null-sink.conf" "$PIPEWIRE_DIR/sunshine-null-sink.conf"
-systemctl --user restart pipewire.service
-echo "Installed PipeWire audio sink"
+if ! diff -q "$SCRIPT_DIR/pipewire/sunshine-null-sink.conf" "$PIPEWIRE_DIR/sunshine-null-sink.conf" &>/dev/null; then
+    cp "$SCRIPT_DIR/pipewire/sunshine-null-sink.conf" "$PIPEWIRE_DIR/sunshine-null-sink.conf"
+    systemctl --user restart pipewire.service
+    echo "Installed PipeWire audio sink (restarted PipeWire)"
+else
+    echo "PipeWire audio sink unchanged, skipping restart"
+fi
 
 # Remove stale udev input isolation rule if present (it breaks headless Sway input)
 if [ -f "/etc/udev/rules.d/85-sunshine-input-isolation.rules" ]; then

@@ -12,16 +12,19 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "=== Headless Sway + Sunshine Installer ==="
 echo ""
 
-# Detect package manager
 install_pkg() {
-    if command -v pacman &>/dev/null; then
-        sudo pacman -S --needed --noconfirm "$@"
-    elif command -v apt &>/dev/null; then
-        sudo apt install -y "$@"
-    else
-        echo "Error: No supported package manager found (pacman or apt)"
-        exit 1
-    fi
+  if command -v rpm-ostree >/dev/null; then
+    sudo rpm-ostree install -y "$@"
+  elif command -v dnf >/dev/null; then
+    sudo dnf install -y "$@"
+  elif command -v apt >/dev/null; then
+    sudo apt install -y "$@"
+  elif command -v pacman >/dev/null; then
+    sudo pacman -S --needed --noconfirm "$@"
+  else
+    echo "Error: no supported package manager found."
+    exit 1
+  fi
 }
 
 is_pkg_installed() {

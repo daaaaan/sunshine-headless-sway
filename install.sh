@@ -12,19 +12,22 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "=== Headless Sway + Sunshine Installer ==="
 echo ""
 
+# Detect package manager
 install_pkg() {
-  if command -v rpm-ostree >/dev/null; then
-    sudo rpm-ostree install -y "$@"
-  elif command -v dnf >/dev/null; then
-    sudo dnf install -y "$@"
-  elif command -v apt >/dev/null; then
-    sudo apt install -y "$@"
-  elif command -v pacman >/dev/null; then
-    sudo pacman -S --needed --noconfirm "$@"
-  else
-    echo "Error: no supported package manager found."
-    exit 1
-  fi
+    if command -v rpm-ostree &>/dev/null; then
+        # rpm-ostree doesn't accept -y; --apply-live avoids the reboot
+        # gate so later steps in this script can use the new binaries.
+        sudo rpm-ostree install --apply-live --idempotent --allow-inactive "$@"
+    elif command -v dnf &>/dev/null; then
+        sudo dnf install -y "$@"
+    elif command -v apt &>/dev/null; then
+        sudo apt install -y "$@"
+    elif command -v pacman &>/dev/null; then
+        sudo pacman -S --needed --noconfirm "$@"
+    else
+        echo "Error: No supported package manager found (rpm-ostree, dnf, apt, or pacman)"
+        exit 1
+    fi
 }
 
 is_pkg_installed() {
@@ -32,6 +35,8 @@ is_pkg_installed() {
         pacman -Qi "$1" &>/dev/null
     elif command -v dpkg &>/dev/null; then
         dpkg -s "$1" &>/dev/null 2>&1
+    elif command -v rpm &>/dev/null; then
+        rpm -q "$1" &>/dev/null
     else
         return 1
     fi

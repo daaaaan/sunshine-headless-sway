@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "env": {
     "PATH": "$(PATH):$(HOME)/.local/bin",
     "SWAYSOCK": "/run/user/1000/sway-sunshine.sock"
@@ -51,6 +52,23 @@
         }
       ],
       "image-path": "steam.png"
+    },
+    {
+      "name": "Lutris",
+      "detached": [
+        "/home/YOUR_USER/.config/sway-sunshine/start-lutris-game.sh lutris"
+      ],
+      "prep-cmd": [
+        {
+          "do": "/home/YOUR_USER/.config/sway-sunshine/restore-default-sink.sh",
+          "undo": ""
+        },
+        {
+          "do": "/home/YOUR_USER/.config/sway-sunshine/set-resolution.sh",
+          "undo": "/home/YOUR_USER/.config/sway-sunshine/stop-lutris-game.sh"
+        }
+      ],
+      "image-path": "lutris.png"
     }
   ]
 }

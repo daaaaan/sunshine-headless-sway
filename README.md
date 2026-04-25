@@ -19,7 +19,7 @@ This setup runs a separate headless Wayland compositor (Sway) dedicated to game 
 ## Requirements
 
 - **OS**: Linux with systemd user services (tested on CachyOS/Arch and Ubuntu 25.10)
-- **GPU**: NVIDIA with proprietary drivers (for NVENC)
+- **GPU**: Any modern GPU with hardware encoding support (NVENC for NVIDIA, VCN for AMD)
 - **Packages**: `sway`, `swaybg`, `pipewire`, `wireplumber`, `xdg-desktop-portal-wlr`
 - **Sunshine**: [LizardByte Sunshine](https://github.com/LizardByte/Sunshine/releases) v2026.226+ (deb for Ubuntu, `sunshine` AUR package for Arch)
 - **Client**: [Moonlight](https://moonlight-stream.org/) on any device
@@ -56,7 +56,7 @@ If you prefer to install manually, see the [manual setup guide](#manual-setup-gu
 │  Headless Sway                     wayland-1        │
 │  └─ Games launched via Sunshine                     │
 │  └─ Audio → sink-sunshine-stereo → Moonlight stream │
-│  └─ Video → wlr-screencopy → NVENC → Moonlight     │
+│  └─ Video → wlr-screencopy → hardware encoder → Moonlight │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -67,30 +67,63 @@ Two systemd user services manage the stack:
 
 ## Adding games
 
-Edit `~/.config/sunshine/apps.json` to add Steam games. Find the app ID on [SteamDB](https://steamdb.info/) and add an entry:
+Edit `~/.config/sunshine/apps.json` to add games. The install script provides templates for Steam and Lutris. Find Steam app IDs on [SteamDB](https://steamdb.info/).
+
+### Steam games
 
 ```json
 {
   "name": "Game Name",
   "detached": [
-    "swaymsg exec 'steam steam://rungameid/APP_ID'"
+    "~/.config/sway-sunshine/start-steam-game.sh <appid>"
   ],
   "prep-cmd": [
-    {
-      "do": "~/.config/sway-sunshine/set-resolution.sh",
-      "undo": ""
-    }
+    {"do": "~/.config/sway-sunshine/restore-default-sink.sh", "undo": ""},
+    {"do": "~/.config/sway-sunshine/set-resolution.sh", "undo": "~/.config/sway-sunshine/stop-steam-game.sh"}
   ]
 }
 ```
+
+### Lutris games
+
+```json
+{
+  "name": "Game Name (Lutris)",
+  "detached": [
+    "~/.config/sway-sunshine/start-lutris-game.sh <slug_or_id>"
+  ],
+  "prep-cmd": [
+    {"do": "~/.config/sway-sunshine/restore-default-sink.sh", "undo": ""},
+    {"do": "~/.config/sway-sunshine/set-resolution.sh", "undo": "~/.config/sway-sunshine/stop-lutris-game.sh"}
+  ]
+}
+```
+
+### Bulk import with LutrisToSunshine
+
+For bulk importing from multiple launchers, this repo bundles [LutrisToSunshine](https://github.com/Arbitrate3280/LutrisToSunshine) ([MIT](./LutrisToSunshine/LICENSE)) — a CLI tool that scans installed game launchers and imports games into Sunshine with optional cover art from SteamGridDB.
+
+**Supported launchers:** Lutris (native + Flatpak), Heroic (Legendary, GOG, Nile, Sideload — native + Flatpak), Bottles, Steam, Faugus, Ryubing, RetroArch, Eden.
+
+```bash
+cd LutrisToSunshine
+pip install -r requirements.txt
+python3 lutristosunshine.py --all --cover --force
+```
+
+Use `--all` to skip the selection prompt, `--cover` to download SteamGridDB artwork, and `--force` to overwrite existing entries. The tool detects whether Sunshine or Apollo is running and adds games via the API.
+
+> **Tip:** After importing, run `./install.sh` to auto-migrate any `lutristosunshine-launch-app.sh` entries to use the repo's `start-lutris-game.sh` scripts.
 
 Restart Sunshine after editing: `systemctl --user restart sunshine-headless.service`
 
 ## How it works
 
-### NVIDIA + headless Sway renderer
+### Headless Sway renderer
 
-The Sway service uses `WLR_RENDERER=gles2` by default. Older wlroots versions have DRM format modifier incompatibilities with NVIDIA's headless backend when using the Vulkan renderer. This may be resolved in wlroots 0.18+, but gles2 remains the safe default.
+The Sway service uses `WLR_RENDERER=gles2` by default for maximum compatibility. For better rendering performance on modern wlroots versions (0.20+), you can try `WLR_RENDERER=vulkan`.
+
+> **Note:** wlroots 0.19.3 has a known bug with the Vulkan renderer on the `headless` backend causing XR24 format errors. Use gles2 if you're on wlroots 0.19.3. The stream may work despite these errors if frame capture succeeds.
 
 ### Audio isolation
 
@@ -106,6 +139,20 @@ Game audio is routed exclusively to the Moonlight stream without touching your h
 ### Dynamic resolution
 
 When a Moonlight client connects, Sunshine runs `set-resolution.sh` as a prep command. This uses `SUNSHINE_CLIENT_WIDTH`, `SUNSHINE_CLIENT_HEIGHT`, and `SUNSHINE_CLIENT_FPS` environment variables to resize the headless output to match the client exactly. On disconnect, `reset-resolution.sh` reverts to 1080p.
+
+### Multi-GPU setup
+
+This setup works with both single-GPU and dual-GPU systems. On multi-GPU setups, two environment variables control GPU selection:
+
+- **`WLR_DRM_DEVICES`** in `sway-sunshine.service` — tells Sway which render node to use for rendering
+- **`adapter_name`** in `sunshine.conf` — tells Sunshine which render node to use for importing frames via DMA-BUF
+
+Both should point to the same GPU (the one where Sway renders). On this specific setup, Sway renders on the NVIDIA GPU (`renderD129`) and `adapter_name` in sunshine.conf also points to `renderD129`. The encoding backend (NVENC on NVIDIA or VCN on AMD) is determined by Vulkan auto-selection unless `VK_ICD_FILENAMES` is explicitly set. On single-GPU systems, the defaults are usually correct. On multi-GPU systems, verify with:
+
+```bash
+ls -la /dev/dri/renderD*
+ls -la /sys/class/drm/card*/device/vendor  # 0x10de = NVIDIA, 0x1002 = AMD
+```
 
 ### Wayland display numbering
 
@@ -124,8 +171,9 @@ Sway creates its IPC socket at the path specified by `SWAYSOCK` (`/run/user/<uid
 ### Blank display / error code -1
 
 - Check `~/.config/sunshine/sunshine.log` for `Frame capture failed`
-- Ensure `WLR_RENDERER=gles2` is set in `sway-sunshine.service` (not `vulkan`)
-- Verify Sunshine is connecting to the correct Wayland display
+- Verify `WLR_DRM_DEVICES` in `sway-sunshine.service` points to the correct render node
+- Verify `adapter_name` in `sunshine.conf` matches the render node where Sway renders
+- Ensure Sunshine is connecting to the correct Wayland display
 
 ### Input isolation
 
@@ -156,6 +204,7 @@ ACTION=="add|change", SUBSYSTEM=="input", ATTRS{id/vendor}=="beef", ATTRS{id/pro
 - The **udev rule** prevents the host compositor from claiming Sunshine's virtual inputs (method varies by DE, see above)
 - The headless Sway uses `WLR_BACKENDS=headless,libinput` with `LIBSEAT_BACKEND=noop` and runs under the `input` group via `sg` to access input devices without a logind seat
 - The **Sway config** disables all physical host devices and only enables Sunshine's passthrough devices, so your physical keyboard and mouse don't leak into the streaming session
+- **KDE Plasma workaround**: `KWIN_DRM_NO_DIRECT_SCANOUT=1` and `KWIN_FORCE_SW_CURSOR=1` are set in `sunshine-headless.service` to prevent KWin from interfering with the headless session
 - Gamepads are read directly by Steam via evdev, bypassing the compositor entirely
 
 #### Switching DE method manually
@@ -243,7 +292,8 @@ cp systemd/sunshine-headless.service ~/.config/systemd/user/
 Update the following in the copied files to match your system:
 
 - `sunshine-headless.service`: set `ExecStart` to your Sunshine path, `WAYLAND_DISPLAY` to your headless display
-- `sway-sunshine.service`: update `/run/user/1000/` to `/run/user/$(id -u)/` if your UID isn't 1000
+- `sway-sunshine.service`: update `/run/user/1000/` to `/run/user/$(id -u)/` if your UID isn't 1000, set `WLR_DRM_DEVICES` to the correct render node
+- `sunshine.conf`: set `adapter_name` to match the render node in `WLR_DRM_DEVICES`
 - `apps.json`: update `/home/YOUR_USER/` to your home directory
 - `set-resolution.sh` / `reset-resolution.sh`: update the socket path if your UID isn't 1000
 
@@ -265,20 +315,24 @@ Open Moonlight, find your host, and pair using the PIN at `https://YOUR_HOST:479
 /etc/udev/rules.d/
 └── 85-sunshine-input-isolation.rules  # Installed by install.sh (GNOME or KDE variant)
 
-~/.config/
-├── pipewire/pipewire.conf.d/
-│   └── sunshine-null-sink.conf # Persistent audio sink (survives disconnect)
-├── sway-sunshine/
-│   ├── config                  # Headless Sway compositor config (input isolation)
-│   ├── set-resolution.sh       # Dynamic resolution on connect
-│   ├── reset-resolution.sh     # Reset resolution on disconnect
-│   └── restore-default-sink.sh # Prevents Sunshine from hijacking host audio
-├── sunshine/
-│   ├── sunshine.conf           # Sunshine server config
-│   └── apps.json               # Game/app entries for Moonlight
-└── systemd/user/
-    ├── sway-sunshine.service   # Headless Sway compositor service
-    └── sunshine-headless.service # Sunshine streaming service
+sunshine-headless-sway/
+├── install.sh                  # One-command setup script
+├── LutrisToSunshine/           # Bundled game importer (LutrisToSunshine)
+├── ~/.config/
+│   ├── pipewire/pipewire.conf.d/
+│   │   └── sunshine-null-sink.conf # Persistent audio sink (survives disconnect)
+│   ├── sway-sunshine/
+│   │   ├── config                  # Headless Sway compositor config (input isolation)
+│   │   ├── set-resolution.sh       # Dynamic resolution on connect
+│   │   ├── reset-resolution.sh     # Reset resolution on disconnect
+│   │   ├── restore-default-sink.sh # Prevents Sunshine from hijacking host audio
+│   │   └── sway-wrapper.sh         # PID-tracking wrapper for sway service
+│   ├── sunshine/
+│   │   ├── sunshine.conf           # Sunshine server config
+│   │   └── apps.json               # Game/app entries for Moonlight
+│   └── systemd/user/
+│       ├── sway-sunshine.service   # Headless Sway compositor service
+│       └── sunshine-headless.service # Sunshine streaming service
 ```
 
 ## License

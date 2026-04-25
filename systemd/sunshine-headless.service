@@ -9,6 +9,8 @@ Environment=WAYLAND_DISPLAY=wayland-1
 Environment=SWAYSOCK=/run/user/1000/sway-sunshine.sock
 Environment=XDG_SESSION_TYPE=wayland
 Environment=XDG_CURRENT_DESKTOP=sway
+Environment=KWIN_DRM_NO_DIRECT_SCANOUT=1
+Environment=KWIN_FORCE_SW_CURSOR=1
 ExecStartPre=/bin/sleep 2
 ExecStart=/usr/bin/sg input -c /usr/bin/sunshine
 Restart=on-failure

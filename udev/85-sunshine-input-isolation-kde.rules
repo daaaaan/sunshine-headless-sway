@@ -1,4 +1,11 @@
-# Strip input capability from Sunshine virtual devices so KWin never sees them.
-# Devices remain accessible to headless Sway via libinput (which reads evdev directly).
-# This works by removing the ID_INPUT tags that KWin uses to discover input devices.
-ACTION=="add|change", SUBSYSTEM=="input", ATTRS{id/vendor}=="beef", ATTRS{id/product}=="dead", ENV{ID_INPUT}="", ENV{ID_INPUT_KEYBOARD}="", ENV{ID_INPUT_MOUSE}="", ENV{ID_INPUT_TOUCHPAD}=""
+# KDE Plasma does not have an equivalent to Mutter's mutter-device-ignore property.
+# Stripping ID_INPUT tags (the old approach) hides devices from ALL consumers
+# including libinput, which breaks headless Sway input passthrough.
+#
+# Input isolation is handled by the Sway config:
+# - "input * events disabled" disables all physical devices
+# - Specific Sunshine passthrough devices are enabled individually
+#
+# KWin may see the virtual devices but cannot grab them since Sway runs in its own
+# session with separate input handling. If you still experience input leaking to KDE,
+# use seatd to run headless Sway on a separate seat (see AGENTS.md for details).

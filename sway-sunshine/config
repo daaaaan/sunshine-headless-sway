@@ -1,8 +1,13 @@
 # Headless Sway session for Sunshine streaming
 # No physical display needed - uses WLR_BACKENDS=headless
 
+# Disable all physical outputs - only HEADLESS-1 should be visible
+output * disable
+
 # Default headless output - 1080p fallback, Sunshine prep commands override this
-output HEADLESS-1 resolution 1920x1080@60Hz
+output HEADLESS-1 enable
+output HEADLESS-1 mode 1920x1080@60Hz
+output HEADLESS-1 mode 3840x2160@120Hz
 
 # Performance tuning
 output * allow_tearing yes

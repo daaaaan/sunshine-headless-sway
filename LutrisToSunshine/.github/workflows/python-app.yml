@@ -1,0 +1,93 @@
+name: Create Binary
+
+on:
+  push:
+    tags:
+      - '*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y patchelf python3-dev gcc build-essential
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install --upgrade setuptools wheel
+        pip install -r requirements.txt
+        pip install nuitka
+
+    - name: Create binary with Nuitka
+      run: |
+        python -m nuitka \
+          --onefile \
+          --assume-yes-for-downloads \
+          --include-package=evdev \
+          --jobs=$(nproc) \
+          --static-libpython=no \
+          --output-filename=lutristosunshine \
+          lutristosunshine.py
+
+    - name: Upload binary as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: lutristosunshine-${{ github.sha }}
+        path: lutristosunshine
+        retention-days: 5
+
+    - name: Generate Release Notes
+      if: startsWith(github.ref, 'refs/tags/')
+      id: release_notes
+      run: |
+        set -euo pipefail
+
+        CURRENT_TAG="${GITHUB_REF_NAME}"
+        BASE_TAG="$(git describe --tags --abbrev=0 "${CURRENT_TAG}^" 2>/dev/null || true)"
+
+        {
+          echo "## What's Changed"
+
+          if [ -n "${BASE_TAG}" ]; then
+            git log --no-merges --reverse --pretty=format:"* %s (%h)" "${BASE_TAG}..${CURRENT_TAG}" \
+              -- . ":(exclude).github" ":(exclude).gitignore"
+          else
+            git log --no-merges --reverse --pretty=format:"* %s (%h)" "${CURRENT_TAG}" \
+              -- . ":(exclude).github" ":(exclude).gitignore"
+          fi
+
+          echo
+          echo
+          echo "## Installation"
+          echo
+          echo "1. Download the binary"
+          echo "2. Make it executable: \`chmod +x lutristosunshine\`"
+          echo "3. Run it: \`./lutristosunshine\`"
+        } > release_notes.md
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: lutristosunshine
+        tag_name: ${{ github.ref_name }}
+        name: ${{ github.ref_name }}
+        body_path: release_notes.md
+        generate_release_notes: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

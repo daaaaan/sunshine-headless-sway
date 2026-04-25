@@ -19,7 +19,7 @@ This setup runs a separate headless Wayland compositor (Sway) dedicated to game 
 ## Requirements
 
 - **OS**: Linux with systemd user services (tested on CachyOS/Arch and Ubuntu 25.10)
-- **GPU**: NVIDIA with proprietary drivers (for NVENC)
+- **GPU**: NVIDIA with proprietary drivers (for NVENC) or AMD
 - **Packages**: `sway`, `swaybg`, `pipewire`, `wireplumber`, `xdg-desktop-portal-wlr`
 - **Sunshine**: [LizardByte Sunshine](https://github.com/LizardByte/Sunshine/releases) v2026.226+ (deb for Ubuntu, `sunshine` AUR package for Arch)
 - **Client**: [Moonlight](https://moonlight-stream.org/) on any device
